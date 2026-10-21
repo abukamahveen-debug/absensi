@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Absensi · PT. Ecolum Pandu Aluvia</title>
+  <meta name="theme-color" content="#1b2e24">
+  <meta name="description" content="Aplikasi absensi karyawan PT. Ecolum Pandu Aluvia">
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <!-- Splash saat aplikasi dimuat -->
+  <div id="splash" class="splash">
+    <img src="assets/logo.png" alt="PT. Ecolum Pandu Aluvia">
+    <span class="spinner spinner-dark"></span>
+  </div>
+
+  <!-- ========== LOGIN ========== -->
+  <main id="view-login" class="login hidden">
+    <div class="login-card">
+      <img class="login-logo" src="assets/logo.png" alt="PT. Ecolum Pandu Aluvia">
+      <h1>Absensi Karyawan</h1>
+      <p class="muted">Masuk dengan ID karyawan dan PIN Anda.</p>
+
+      <form id="form-login" novalidate>
+        <label class="field">
+          <span>ID Karyawan</span>
+          <input id="login-id" type="text" autocomplete="username" autocapitalize="characters" spellcheck="false" placeholder="contoh: KRY001" required>
+        </label>
+        <label class="field">
+          <span>PIN</span>
+          <input id="login-pin" type="password" inputmode="numeric" autocomplete="current-password" maxlength="6" placeholder="6 digit angka" required>
+        </label>
+        <p id="login-error" class="alert alert-bad hidden" role="alert"></p>
+        <button id="btn-login" class="btn btn-primary btn-lg btn-block" type="submit">Masuk</button>
+      </form>
+    </div>
+    <p class="login-foot">© PT. Ecolum Pandu Aluvia</p>
+  </main>
+
+  <!-- ========== APLIKASI ========== -->
+  <div id="view-app" class="app hidden">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <img class="topbar-logo" src="assets/logo.png" alt="PT. Ecolum Pandu Aluvia">
+        <nav id="nav" class="nav" aria-label="Menu utama"></nav>
+        <div class="topbar-user">
+          <span id="user-avatar" class="avatar" aria-hidden="true"></span>
+          <span id="user-name" class="topbar-name"></span>
+          <button id="btn-logout" class="icon-btn" type="button" aria-label="Keluar" title="Keluar"></button>
+        </div>
+      </div>
+    </header>
+    <main id="page" class="page" tabindex="-1"></main>
+  </div>
+
+  <!-- ========== KAMERA SELFIE ========== -->
+  <div id="cam" class="modal hidden" role="dialog" aria-modal="true" aria-label="Foto selfie">
+    <div class="modal-sheet cam-sheet">
+      <div class="cam-stage">
+        <video id="cam-video" playsinline muted autoplay></video>
+        <canvas id="cam-canvas" class="hidden"></canvas>
+      </div>
+      <p id="cam-hint" class="muted center small">Pastikan wajah terlihat jelas, lalu ambil foto.</p>
+      <div class="cam-actions">
+        <button type="button" class="btn btn-ghost" id="cam-cancel">Batal</button>
+        <button type="button" class="btn btn-primary" id="cam-shoot">Ambil Foto</button>
+        <button type="button" class="btn btn-ghost hidden" id="cam-retake">Ulangi</button>
+        <button type="button" class="btn btn-primary hidden" id="cam-send">Kirim</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== DIALOG UMUM ========== -->
+  <div id="dialog" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+    <form id="dialog-form" class="modal-sheet" novalidate>
+      <h3 id="dialog-title"></h3>
+      <div id="dialog-body"></div>
+      <p id="dialog-error" class="alert alert-bad hidden" role="alert"></p>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-ghost" id="dialog-cancel">Batal</button>
+        <button type="submit" class="btn btn-primary" id="dialog-ok">Simpan</button>
+      </div>
+    </form>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
