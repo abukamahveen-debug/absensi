@@ -444,7 +444,10 @@
         (a ? '<div class="stat-foot">' + badge(a.status) + (a.keterangan ? '<span class="muted small">' + esc(a.keterangan) + '</span>' : '') + '</div>' : '') +
       '</section>' +
       '<section class="card"><div class="loc-row" id="loc"></div></section>' +
-      '<button class="btn btn-primary btn-lg btn-block" id="btn-absen"></button>' +
+      '<div class="absen-actions">' +
+        '<button type="button" id="btn-masuk"></button>' +
+        '<button type="button" id="btn-pulang"></button>' +
+      '</div>' +
       '<p class="hint" id="absen-hint"></p>';
 
     function tick() {
@@ -452,18 +455,29 @@
       const c = $('#clock'); if (!c) return;
       c.textContent = n.time;
       $('#today').textContent = n.long;
+      if (n.time.slice(6, 8) === '00') updateAbsenUI();
     }
     tick();
     state.clock = setInterval(tick, 1000);
 
-    $('#btn-absen').addEventListener('click', doAbsen);
+    $('#btn-masuk').addEventListener('click', function () { doAbsen('masuk'); });
+    $('#btn-pulang').addEventListener('click', function () { doAbsen('pulang'); });
     updateAbsenUI();
+  }
+
+  function toMenit(str) {
+    const p = String(str || '0:0').split(':');
+    return Number(p[0]) * 60 + Number(p[1] || 0);
+  }
+
+  function belumJamPulang() {
+    return toMenit(nowParts().time) < toMenit(state.status.shift.jamPulang);
   }
 
   function updateAbsenUI() {
     const st = state.status;
-    const locEl = $('#loc'), btn = $('#btn-absen'), hint = $('#absen-hint');
-    if (!st || !locEl || !btn) return;
+    const locEl = $('#loc'), bMasuk = $('#btn-masuk'), bPulang = $('#btn-pulang'), hint = $('#absen-hint');
+    if (!st || !locEl || !bMasuk || !bPulang) return;
 
     const li = locInfo();
     locEl.innerHTML =
@@ -472,29 +486,53 @@
       '<button class="icon-btn" id="btn-loc" type="button" aria-label="Segarkan lokasi">' + icon('refresh') + '</button>';
     $('#btn-loc').onclick = refreshLocation;
 
-    const mode = absenMode();
-    let label, disabled = false, hintText = '';
-    if (mode === 'masuk') label = 'Absen Masuk';
-    else if (mode === 'pulang') label = 'Absen Pulang';
-    else if (mode === 'selesai') { label = 'Absensi hari ini selesai'; disabled = true; }
-    else { label = 'Hari ini: ' + st.absen.status; disabled = true; }
+    const a = st.absen, mode = absenMode();
+    const camIcon = st.wajibSelfie ? icon('camera') : '';
 
-    if (!disabled) {
-      if (!li.ok) { disabled = true; hintText = st.wajibGps ? 'Tombol aktif saat Anda berada di dalam area absen.' : ''; }
-      else if (st.wajibSelfie) hintText = 'Anda akan diminta mengambil foto selfie.';
+    function paint(btn, o) {
+      if (btn.classList.contains('is-busy')) return;
+      btn.className = 'btn btn-lg act ' + o.cls;
+      btn.disabled = o.disabled;
+      btn.innerHTML = '<span class="act-label">' + (o.icon || '') + esc(o.label) + '</span>' +
+        '<span class="act-sub">' + esc(o.sub) + '</span>';
     }
 
-    const camIcon = (!disabled && st.wajibSelfie) ? icon('camera') : '';
-    if (!btn.classList.contains('is-busy')) {
-      btn.innerHTML = camIcon + '<span>' + esc(label) + '</span>';
-      btn.disabled = disabled;
+    // Tombol MASUK
+    if (mode === 'masuk') {
+      paint(bMasuk, { cls: 'btn-primary', disabled: !li.ok, icon: camIcon, label: 'Absen Masuk', sub: 'Shift mulai ' + fmtJam(st.shift.jamMasuk) });
+    } else if (a && a.jamMasuk) {
+      paint(bMasuk, { cls: 'is-done', disabled: true, icon: icon('check'), label: 'Sudah masuk', sub: 'Pukul ' + fmtJam(a.jamMasuk) });
+    } else {
+      paint(bMasuk, { cls: 'btn-ghost', disabled: true, label: 'Absen Masuk', sub: 'Tercatat: ' + (a ? a.status : '-') });
+    }
+
+    // Tombol PULANG
+    if (mode === 'pulang') {
+      paint(bPulang, { cls: 'btn-primary', disabled: !li.ok, icon: camIcon, label: 'Absen Pulang', sub: 'Shift selesai ' + fmtJam(st.shift.jamPulang) });
+    } else if (mode === 'selesai') {
+      paint(bPulang, { cls: 'is-done', disabled: true, icon: icon('check'), label: 'Sudah pulang', sub: 'Pukul ' + fmtJam(a.jamPulang) });
+    } else {
+      paint(bPulang, { cls: 'btn-ghost', disabled: true, label: 'Absen Pulang', sub: mode === 'masuk' ? 'Aktif setelah absen masuk' : '—' });
+    }
+
+    let hintText = '';
+    if (mode === 'masuk' || mode === 'pulang') {
+      if (!li.ok) hintText = st.wajibGps ? 'Tombol aktif saat Anda berada di dalam area absen.' : '';
+      else if (mode === 'pulang' && belumJamPulang()) hintText = 'Belum jam pulang (' + fmtJam(st.shift.jamPulang) + '). Jika absen sekarang, tercatat pulang lebih awal.';
+      else if (st.wajibSelfie) hintText = 'Anda akan diminta mengambil foto selfie.';
+    } else if (mode === 'selesai') {
+      hintText = 'Sampai jumpa besok!';
     }
     hint.textContent = hintText;
   }
 
-  async function doAbsen() {
-    const st = state.status, mode = absenMode(), btn = $('#btn-absen');
-    if (mode !== 'masuk' && mode !== 'pulang') return;
+  async function doAbsen(kind) {
+    const st = state.status, mode = absenMode(), btn = $('#btn-' + kind);
+    if (!btn || mode !== kind) return;
+
+    if (kind === 'pulang' && belumJamPulang()) {
+      if (!window.confirm('Belum jam pulang (' + fmtJam(st.shift.jamPulang) + '). Tetap absen pulang sekarang?')) return;
+    }
 
     let foto = null;
     if (st.wajibSelfie) {
@@ -507,7 +545,7 @@
       try { state.pos = await getPosition(8000); state.posError = null; } catch (e) { /* pakai lokasi terakhir */ }
 
       try {
-        const r = await api(mode === 'masuk' ? 'absenMasuk' : 'absenPulang', {
+        const r = await api(kind === 'masuk' ? 'absenMasuk' : 'absenPulang', {
           lat: state.pos ? state.pos.lat : '',
           lng: state.pos ? state.pos.lng : '',
           foto: foto
@@ -515,7 +553,6 @@
         toast(r.pesan, 'ok');
         state.status.absen = r.absen;   // status langsung diperbarui dari respons server
         renderAbsen();
-        updateAbsenUI();
         window.scrollTo(0, 0);
       } catch (e) {
         handleError(e);
