@@ -30,7 +30,8 @@
     refresh: '<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>',
     logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',
     inbox: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5h13L22 12v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6z"/>',
-    download: '<path d="M12 3v12M7 10l5 5 5-5M4 21h16"/>'
+    download: '<path d="M12 3v12M7 10l5 5 5-5M4 21h16"/>',
+    check: '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16 9.5"/>'
   };
 
   function icon(name) {
@@ -198,7 +199,7 @@
 
     $('#user-avatar').textContent = initials(u.nama);
     $('#user-name').textContent = u.nama;
-    $('#btn-logout').innerHTML = icon('logout');
+    $('#btn-logout').innerHTML = icon('logout') + '<span>Keluar</span>';
   }
 
   const PAGES = {};
@@ -408,7 +409,23 @@
     refreshLocation();
   };
 
+  function absenBanner(a) {
+    if (!a) return '';
+    if (!a.jamMasuk) {
+      return '<div class="banner banner-info">' + icon('check') + '<div><strong>Hari ini tercatat: ' + esc(a.status) + '</strong>' +
+        (a.keterangan ? '<span>' + esc(a.keterangan) + '</span>' : '') + '</div></div>';
+    }
+    if (a.jamPulang) {
+      return '<div class="banner banner-ok">' + icon('check') + '<div><strong>Absensi hari ini selesai</strong>' +
+        '<span>Masuk ' + esc(fmtJam(a.jamMasuk)) + ' · Pulang ' + esc(fmtJam(a.jamPulang)) + '. Terima kasih!</span></div></div>';
+    }
+    return '<div class="banner ' + (a.status === 'Telat' ? 'banner-warn' : 'banner-ok') + '">' + icon('check') + '<div>' +
+      '<strong>Anda sudah absen masuk</strong><span>Pukul ' + esc(fmtJam(a.jamMasuk)) +
+      (a.status === 'Telat' ? ' (telat)' : '') + '. Jangan lupa absen pulang nanti.</span></div></div>';
+  }
+
   function renderAbsen() {
+    clearInterval(state.clock);
     const st = state.status, a = st.absen, sh = st.shift;
     $('#page').innerHTML =
       '<section class="hero">' +
@@ -417,6 +434,7 @@
         '<div class="hero-clock" id="clock">--:--:--</div>' +
         '<div class="hero-date" id="today"></div>' +
       '</section>' +
+      absenBanner(a) +
       '<section class="card">' +
         '<div class="stats">' +
           '<div class="stat"><span class="stat-label">Shift</span><strong>' + fmtJam(sh.jamMasuk) + '–' + fmtJam(sh.jamPulang) + '</strong></div>' +
@@ -495,10 +513,10 @@
           foto: foto
         });
         toast(r.pesan, 'ok');
-        const fresh = await api('status');
-        state.status = fresh;
+        state.status.absen = r.absen;   // status langsung diperbarui dari respons server
         renderAbsen();
         updateAbsenUI();
+        window.scrollTo(0, 0);
       } catch (e) {
         handleError(e);
       }
