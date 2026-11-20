@@ -228,7 +228,7 @@
   }
   function cetak(html, landscape) {
     $('#print').innerHTML = html;
-    var st = document.createElement('style'); st.id = 'pg'; st.textContent = '@media print{@page{size:A4 ' + (landscape ? 'landscape' : 'portrait') + ';margin:12mm}}'; document.head.appendChild(st);
+    var st = document.createElement('style'); st.id = 'pg'; st.textContent = '@media print{@page{size:A4 ' + (landscape ? 'landscape' : 'portrait') + ';margin:0}}'; document.head.appendChild(st);
     document.body.classList.add('printing');
     var done = function () { document.body.classList.remove('printing'); var p = $('#pg'); if (p) p.remove(); window.removeEventListener('afterprint', done); };
     window.addEventListener('afterprint', done);
@@ -243,13 +243,13 @@
     }).join('');
     return '<div class="slip">' + kop('SLIP GAJI', 'Periode ' + fmtL(per.tanggal_mulai) + ' – ' + fmtL(per.tanggal_selesai), true) +
       '<div class="meta"><div>Nama: <b>' + esc(s.nama_tukang) + '</b></div><div>Tanggal bayar: <b>' + fmtL(per.tanggal_bayar) + '</b></div><div>Jabatan: ' + esc(s.jabatan || '-') + '</div><div>Jumlah hari kerja: ' + s.jumlah_hari + ' hari</div></div>' +
-      '<table style="width:100%"><thead><tr><th>Keterangan</th><th class="n">Jumlah</th><th class="n">Tarif</th><th class="n">Nilai</th></tr></thead><tbody>' +
+      '<table><thead><tr><th>Keterangan</th><th class="n">Jumlah</th><th class="n">Tarif</th><th class="n">Nilai</th></tr></thead><tbody>' +
       '<tr><td>Gaji harian</td><td class="n">' + s.jumlah_hari + ' hari</td><td class="n">' + rp(s.gaji_harian) + '</td><td class="n">' + rp(s.upah_pokok) + '</td></tr>' +
       '<tr><td>Lembur</td><td class="n">' + jam(s.jam_lembur) + ' jam</td><td class="n">' + rp(s.tarif_lembur) + '</td><td class="n">' + rp(s.upah_lembur) + '</td></tr>' +
       (+s.bonus ? '<tr><td colspan="3">Bonus' + (s.catatan ? ' (' + esc(s.catatan) + ')' : '') + '</td><td class="n">' + rp(s.bonus) + '</td></tr>' : '') +
       (+s.potongan ? '<tr><td colspan="3">Potongan' + (s.catatan && !+s.bonus ? ' (' + esc(s.catatan) + ')' : '') + '</td><td class="n">- ' + rp(s.potongan) + '</td></tr>' : '') +
       '<tr class="total"><td colspan="3">TOTAL DITERIMA</td><td class="n">' + rp(s.total_dibayar) + '</td></tr></tbody></table>' +
-      (rinci ? '<p style="margin:10px 0 4px"><b>Rincian kehadiran</b></p><table style="width:100%"><thead><tr><th style="width:28px">No</th><th>Tanggal</th><th>Proyek</th><th class="n">Lembur</th></tr></thead><tbody>' + rinci + '</tbody></table>' : '') +
+      (rinci ? '<p class="sub">Rincian kehadiran</p><table><thead><tr><th style="width:28px">No</th><th>Tanggal</th><th>Proyek</th><th class="n">Lembur</th></tr></thead><tbody>' + rinci + '</tbody></table>' : '') +
       '<div class="ttd"><div>Penerima<br><br><br><br>( ' + esc(s.nama_tukang) + ' )</div><div>Admin<br><br><br><br>( ................ )</div></div></div>';
   }
 
