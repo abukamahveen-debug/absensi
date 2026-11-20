@@ -82,7 +82,7 @@
     if (!S.proyek.length) return h + '<p class="alert alert-bad">Belum ada proyek. Hubungi admin.</p>';
     return h + '<label class="field"><span>Proyek</span><input id="in-proyek" type="search" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Ketik untuk mencari proyek"></label>' +
       '<div id="pick" class="pick hidden"></div>' +
-      '<label class="field"><span>Kegiatan</span><textarea id="in-keg-m" rows="3" maxlength="200" placeholder="Isi sesuai pekerjaan hari ini, contoh: pasang besi kolom lantai 2">' + esc(S.kegM) + '</textarea></label>' +
+      '<label class="field"><span>Kegiatan</span><textarea id="in-keg-m" rows="3" maxlength="200" placeholder="Isi sesuai pekerjaan hari ini, contoh: pasang elektrikal">' + esc(S.kegM) + '</textarea></label>' +
       '<button id="btn-masuk" class="btn btn-primary btn-lg btn-block" type="button">Masuk</button>' +
       '<p class="muted small center" style="margin-top:12px">Berganti proyek di hari yang sama? Catat lagi dengan proyek lain.</p>';
   }
@@ -114,7 +114,7 @@
     return h + '<div class="field"><span>Proyek</span></div><div class="pick" style="margin-top:0">' + list.map(function (p) { return '<button type="button" data-lp="' + p.id + '" class="' + (S.lpid === p.id ? 'on' : '') + '">' + esc(p.nama) + (S.lpid === p.id ? '<span>✓</span>' : '') + '</button>'; }).join('') + '</div>' +
       '<div class="field"><span>Jumlah jam lembur</span></div>' +
       '<div class="stepper"><button type="button" id="jam-min" aria-label="Kurangi">−</button><output id="jam-out">' + fmtJam(S.jam) + ' <small>jam</small></output><button type="button" id="jam-plus" aria-label="Tambah">+</button></div>' +
-      '<label class="field"><span>Kegiatan lembur</span><textarea id="in-keg-l" rows="3" maxlength="200" placeholder="Isi sesuai pekerjaan saat lembur, contoh: lanjut pengecoran">' + esc(S.kegL) + '</textarea></label>' +
+      '<label class="field"><span>Kegiatan lembur</span><textarea id="in-keg-l" rows="3" maxlength="200" placeholder="Isi sesuai pekerjaan saat lembur, contoh: pasang elektrikal">' + esc(S.kegL) + '</textarea></label>' +
       '<p id="lembur-ada" class="muted small" style="margin-bottom:14px"></p>' +
       '<button id="btn-lembur" class="btn btn-primary btn-lg btn-block" type="button">Simpan Lembur</button>';
   }
