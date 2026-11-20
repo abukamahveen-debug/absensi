@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Admin · Absensi Tukang</title>
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <main id="v-login" class="login hidden">
+    <div class="login-card">
+      <img class="login-logo" src="assets/logo.png" alt="PT. Ecolum Pandu Aluvia">
+      <h1>Admin</h1>
+      <p class="muted">Masuk dengan email dan password admin.</p>
+      <form id="f-login" novalidate>
+        <label class="field"><span>Email</span><input id="in-email" type="email" autocomplete="username" required></label>
+        <label class="field"><span>Password</span><input id="in-pass" type="password" autocomplete="current-password" required></label>
+        <p id="login-err" class="alert alert-bad hidden" role="alert"></p>
+        <button id="btn-login" class="btn btn-primary btn-lg btn-block" type="submit">Masuk</button>
+      </form>
+    </div>
+  </main>
+
+  <div id="v-app" class="hidden">
+    <header class="a-top">
+      <img src="assets/logo.png" alt="">
+      <b>Admin Absensi Tukang</b><span class="sp"></span>
+      <button id="btn-set" class="btn btn-ghost btn-sm" type="button">Pengaturan</button>
+      <button id="btn-keluar" class="btn btn-ghost btn-sm" type="button">Keluar</button>
+    </header>
+    <nav id="nav" class="a-nav"></nav>
+    <main id="page" class="a-main"></main>
+  </div>
+
+  <div id="dialog" class="modal hidden" role="dialog" aria-modal="true">
+    <form id="dlg-form" class="modal-sheet" novalidate>
+      <h3 id="dlg-title"></h3><div id="dlg-body"></div>
+      <p id="dlg-err" class="alert alert-bad hidden" role="alert"></p>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-ghost" id="dlg-cancel">Batal</button>
+        <button type="submit" class="btn btn-primary" id="dlg-ok">Simpan</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="print" class="doc"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>
