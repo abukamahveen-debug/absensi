@@ -13,6 +13,7 @@ h1,h2,h3,p{margin:0}button,input,select,textarea{font:inherit;color:inherit}
 .btn-lg{min-height:54px;font-size:16px;border-radius:14px}.btn-block{width:100%}.btn-sm{padding:6px 12px;min-height:34px;font-size:13px;border-radius:9px}
 .field{display:block;margin-bottom:14px}.field>span{display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--g7)}
 input,select,textarea{width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:12px;background:#fff;min-height:48px;outline:0}
+textarea{resize:vertical;line-height:1.4}
 input:focus,select:focus,textarea:focus{border-color:var(--g5);box-shadow:0 0 0 3px var(--g1)}
 .alert{padding:10px 14px;border-radius:12px;font-size:14px;margin:0 0 14px}.alert-bad{background:var(--bad-bg);color:var(--bad)}.alert-ok{background:var(--ok-bg);color:var(--ok)}
 .card{background:#fff;border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:18px}
