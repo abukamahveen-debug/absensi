@@ -31,7 +31,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--g5);box-shadow:0 0 0 
 
 /* ---------- App tukang ---------- */
 .t-top{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid var(--line);padding:10px 16px;display:flex;align-items:center;gap:12px}
-.t-top img{height:30px}.t-top .who{flex:1;min-width:0}.t-top .who b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.t-top img{height:32px}.t-top .sp{flex:1}.t-top .who{flex:1;min-width:0}.t-top .who b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .t-top .who span{font-size:12px;color:var(--muted)}
 .t-main{padding:16px 16px 96px;max-width:520px;margin:0 auto}
 .t-main h2{font-size:20px;margin-bottom:4px}.t-main .lead{color:var(--muted);margin-bottom:16px;font-size:14px}
@@ -79,8 +79,7 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}tr:last-child td{bo
 .doc h1{font-size:16px}.doc h2{font-size:14px;margin:0}
 .doc .kop{display:flex;align-items:center;gap:12px;border-bottom:2px solid #000;padding-bottom:8px;margin-bottom:12px}.doc .kop img{height:44px}
 .doc table{font-size:11px}.doc th,.doc td{border:1px solid #444;padding:4px 6px;white-space:normal}.doc th{background:#eee;color:#000}
-.slip{break-inside:avoid;border:1px solid #000;padding:16px;margin-bottom:12px}
-.slip:nth-child(2n){page-break-after:always}
+.slip{page-break-after:always;border:1px solid #000;padding:16px;margin-bottom:12px}
 .slip .meta{display:grid;grid-template-columns:1fr 1fr;gap:2px 20px;margin-bottom:10px}
 .slip .ttd{display:flex;justify-content:space-between;margin-top:36px;text-align:center}.slip .ttd div{width:40%}
 .slip .total td{font-weight:700;font-size:13px;background:#f3f3f3}
@@ -91,3 +90,10 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}tr:last-child td{bo
   body.landscape{}
 }
 @media(min-width:700px){.t-main{padding-top:28px}}
+
+.pick{border:1.5px solid var(--line);border-radius:12px;overflow:hidden;margin:-6px 0 14px;max-height:260px;overflow-y:auto}
+.pick button{display:flex;align-items:center;justify-content:space-between;width:100%;text-align:left;padding:13px 14px;border:0;border-bottom:1px solid var(--line);background:#fff;font-weight:500;min-height:48px}
+.pick button:last-child{border-bottom:0}.pick button.on{background:var(--g1);font-weight:700;color:var(--g9)}
+.pick .none{padding:13px 14px;color:var(--muted);font-size:14px}
+.hello{font-size:22px;margin-bottom:6px}
+.tglnama{font-size:13px;color:var(--muted);margin:-8px 0 14px}

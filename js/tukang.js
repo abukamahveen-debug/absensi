@@ -1,7 +1,7 @@
 (function () {
   'use strict';
   var C = window.CONFIG, $ = function (s, r) { return (r || document).querySelector(s); };
-  var S = { user: null, proyek: [], r: null, tab: 'masuk', tgl: 0, jam: 2 }; // tgl: 0 = hari ini, 1 = kemarin
+  var S = { user: null, proyek: [], r: null, tab: 'masuk', tgl: null, jam: 2, pid: null, lpid: null };
 
   /* ---------- util ---------- */
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -18,10 +18,12 @@
   var HARI = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'], BLN = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
   function parse(s) { var p = s.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
   function iso(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  function addDays(s, n) { var d = parse(s); d.setDate(d.getDate() + n); return iso(d); }
   function fmt(s) { var d = parse(s); return HARI[d.getDay()] + ', ' + d.getDate() + ' ' + BLN[d.getMonth()] + ' ' + d.getFullYear(); }
   function fmtJam(n) { return String(n).replace('.', ','); }
   function today() { return S.r ? S.r.hari_ini : new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Jakarta' }); }
-  function tanggalPilihan() { var d = parse(today()); d.setDate(d.getDate() - S.tgl); return iso(d); }
+  function minTgl() { return addDays(today(), -7); }
+  function tanggalPilihan() { if (!S.tgl) S.tgl = today(); return S.tgl; }
   var tt;
   function toast(m, bad) { var t = $('#toast'); t.textContent = m; t.className = 'toast show' + (bad ? ' bad' : ''); clearTimeout(tt); tt = setTimeout(function () { t.className = 'toast'; }, 3200); }
   function busy(btn, on, label) { btn.disabled = on; if (on) { btn.dataset.l = btn.innerHTML; btn.innerHTML = '<span class="spinner"></span>'; } else btn.innerHTML = label || btn.dataset.l || btn.innerHTML; }
@@ -47,31 +49,27 @@
 
   /* ---------- tampilan ---------- */
   function show(v) { $('#v-login').classList.toggle('hidden', v !== 'login'); $('#v-app').classList.toggle('hidden', v !== 'app'); }
-  function keluar() { store('tukang', null); S.user = null; S.r = null; $('#in-nama').value = ''; show('login'); }
+  function keluar() { store('tukang', null); S.user = null; S.r = null; S.tgl = null; S.pid = null; S.lpid = null; $('#in-nama').value = ''; show('login'); }
 
   function muat() {
     return Promise.all([rpc('daftar_proyek'), rpc('tukang_riwayat', auth())]).then(function (r) { S.proyek = r[0] || []; S.r = r[1]; });
   }
   function masukApp() {
-    $('#who-nama').textContent = S.user.nama; $('#who-jabatan').textContent = S.user.jabatan || 'Tukang';
     show('app'); $('#page').innerHTML = '<p class="empty"><span class="spinner spinner-dark"></span></p>';
     muat().then(function () { render(); }).catch(function (e) { if (/Sesi/.test(e.message)) onErr(e); else { toast(e.message, true); render(); } });
   }
 
-  function opsiProyek(list, sel) {
-    return list.map(function (p) { return '<option value="' + p.id + '"' + (String(p.id) === String(sel) ? ' selected' : '') + '>' + esc(p.nama) + '</option>'; }).join('');
-  }
-  function segTanggal() {
-    var h = parse(today()), k = new Date(h); k.setDate(k.getDate() - 1);
-    function b(i, t, d) { return '<button type="button" data-tgl="' + i + '" class="' + (S.tgl === i ? 'on' : '') + '">' + t + '<small>' + d.getDate() + ' ' + BLN[d.getMonth()] + '</small></button>'; }
-    return '<div class="seg">' + b(0, 'Hari ini', h) + b(1, 'Kemarin', k) + '</div>';
+  function kalender() {
+    var tg = tanggalPilihan();
+    return '<label class="field"><span>Tanggal</span><input type="date" id="in-tgl" value="' + tg + '" min="' + minTgl() + '" max="' + today() + '"></label>' +
+      '<p class="tglnama">' + fmt(tg) + (tg === today() ? ' (hari ini)' : '') + '</p>';
   }
 
   function render() {
     document.querySelectorAll('.tabbar button').forEach(function (b) { b.classList.toggle('on', b.dataset.tab === S.tab); });
     var el = $('#page');
-    if (S.tab === 'masuk') el.innerHTML = vMasuk();
-    else if (S.tab === 'lembur') el.innerHTML = vLembur();
+    if (S.tab === 'masuk') { el.innerHTML = vMasuk(); initPick(); }
+    else if (S.tab === 'lembur') { el.innerHTML = vLembur(); cekLemburAda(); }
     else el.innerHTML = vRiwayat();
     window.scrollTo(0, 0);
   }
@@ -80,21 +78,39 @@
     var tg = tanggalPilihan();
     var ada = S.r.absensi.filter(function (a) { return a.tanggal === tg; });
     var st = ada.length ? '<div class="status">Sudah masuk pada <b>' + fmt(tg) + '</b>:<br>' + ada.map(function (a) { return '• ' + esc(a.proyek); }).join('<br>') + '</div>' : '';
-    var h = '<h2>Catat Masuk</h2><p class="lead">Pilih hari dan proyek yang dikerjakan.</p>' + segTanggal() + st;
+    var h = '<h2 class="hello">Hi Pak ' + esc(S.user.nama) + '</h2><p class="lead">Jangan lupa absen hari ini. Pilih hari dan proyek yang dikerjakan.</p>' + kalender() + st;
     if (!S.proyek.length) return h + '<p class="alert alert-bad">Belum ada proyek. Hubungi admin.</p>';
-    return h + '<label class="field"><span>Proyek</span><select id="sel-proyek">' + opsiProyek(S.proyek, store('last_proyek')) + '</select></label>' +
-      '<button id="btn-masuk" class="btn btn-primary btn-lg btn-block" type="button">Catat Masuk</button>' +
+    return h + '<label class="field"><span>Proyek</span><input id="in-proyek" type="search" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Ketik untuk mencari proyek"></label>' +
+      '<div id="pick" class="pick hidden"></div>' +
+      '<button id="btn-masuk" class="btn btn-primary btn-lg btn-block" type="button">Masuk</button>' +
       '<p class="muted small center" style="margin-top:12px">Berganti proyek di hari yang sama? Catat lagi dengan proyek lain.</p>';
+  }
+
+  /* pencarian proyek */
+  function namaProyek(id) { var p = S.proyek.filter(function (x) { return x.id === id; })[0]; return p ? p.nama : ''; }
+  function initPick() {
+    var inp = $('#in-proyek'); if (!inp) return;
+    var last = +store('last_proyek'); if (last && namaProyek(last)) { S.pid = last; inp.value = namaProyek(last); } else S.pid = null;
+  }
+  function renderPick(tampil) {
+    var box = $('#pick'), inp = $('#in-proyek'); if (!box) return;
+    if (!tampil) { box.classList.add('hidden'); return; }
+    var q = inp.value.trim().toLowerCase();
+    var hasil = S.proyek.filter(function (p) { return !q || p.nama.toLowerCase().indexOf(q) >= 0; }).slice(0, 30);
+    box.innerHTML = hasil.length ? hasil.map(function (p) { return '<button type="button" data-pid="' + p.id + '" class="' + (S.pid === p.id ? 'on' : '') + '">' + esc(p.nama) + (S.pid === p.id ? '<span>✓</span>' : '') + '</button>'; }).join('') : '<div class="none">Proyek tidak ditemukan</div>';
+    box.classList.remove('hidden');
   }
 
   function vLembur() {
     var tg = tanggalPilihan();
     var ops = S.r.absensi.filter(function (a) { return a.tanggal === tg; });
-    var h = '<h2>Input Lembur</h2><p class="lead">Jam kerja biasa 08.00–17.00. Isi jam di luar itu.</p>' + segTanggal();
+    var h = '<h2>Input Lembur</h2><p class="lead">Jam kerja biasa 08.00–17.00. Isi jam di luar itu.</p>' + kalender();
     if (!ops.length) return h + '<p class="alert alert-bad">Belum ada catatan masuk pada ' + fmt(tg) + '. Catat masuk dulu di menu Masuk.</p>';
-    var uniq = {}, list = [];
-    S.proyek.forEach(function (p) { ops.forEach(function (a) { if (a.proyek === p.nama && !uniq[p.id]) { uniq[p.id] = 1; list.push(p); } }); });
-    return h + '<label class="field"><span>Proyek</span><select id="sel-lembur">' + opsiProyek(list) + '</select></label>' +
+    var list = [];
+    S.proyek.forEach(function (p) { if (ops.some(function (a) { return a.proyek === p.nama; })) list.push(p); });
+    ops.forEach(function (a) { if (!list.some(function (p) { return p.nama === a.proyek; })) { var pp = S.proyek.filter(function (p) { return p.nama === a.proyek; })[0]; if (pp) list.push(pp); } });
+    if (!list.some(function (p) { return p.id === S.lpid; })) S.lpid = list.length ? list[0].id : null;
+    return h + '<div class="field"><span>Proyek</span></div><div class="pick" style="margin-top:0">' + list.map(function (p) { return '<button type="button" data-lp="' + p.id + '" class="' + (S.lpid === p.id ? 'on' : '') + '">' + esc(p.nama) + (S.lpid === p.id ? '<span>✓</span>' : '') + '</button>'; }).join('') + '</div>' +
       '<div class="field"><span>Jumlah jam lembur</span></div>' +
       '<div class="stepper"><button type="button" id="jam-min" aria-label="Kurangi">−</button><output id="jam-out">' + fmtJam(S.jam) + ' <small>jam</small></output><button type="button" id="jam-plus" aria-label="Tambah">+</button></div>' +
       '<p id="lembur-ada" class="muted small" style="margin-bottom:14px"></p>' +
@@ -121,8 +137,8 @@
   }
 
   function cekLemburAda() {
-    var s = $('#sel-lembur'), o = $('#lembur-ada'); if (!s || !o) return;
-    var nm = (S.proyek.filter(function (p) { return String(p.id) === s.value; })[0] || {}).nama, tg = tanggalPilihan();
+    var o = $('#lembur-ada'); if (!o) return;
+    var nm = namaProyek(S.lpid), tg = tanggalPilihan();
     var l = S.r.lembur.filter(function (x) { return x.tanggal === tg && x.proyek === nm; })[0];
     o.textContent = l ? 'Sudah tercatat ' + fmtJam(l.jam) + ' jam. Menyimpan akan mengganti jumlah itu.' : '';
   }
@@ -130,17 +146,19 @@
   /* ---------- aksi ---------- */
   document.addEventListener('click', function (e) {
     var t = e.target.closest('button'); if (!t) return;
-    if (t.dataset.tab) { S.tab = t.dataset.tab; render(); cekLemburAda(); return; }
-    if (t.dataset.tgl !== undefined) { S.tgl = +t.dataset.tgl; render(); cekLemburAda(); return; }
+    if (t.dataset.tab) { S.tab = t.dataset.tab; render(); return; }
+    if (t.dataset.pid) { S.pid = +t.dataset.pid; $('#in-proyek').value = namaProyek(S.pid); renderPick(false); return; }
+    if (t.dataset.lp) { S.lpid = +t.dataset.lp; render(); return; }
     if (t.id === 'jam-min') { S.jam = Math.max(0.5, S.jam - 0.5); $('#jam-out').firstChild.nodeValue = fmtJam(S.jam) + ' '; return; }
     if (t.id === 'jam-plus') { S.jam = Math.min(12, S.jam + 0.5); $('#jam-out').firstChild.nodeValue = fmtJam(S.jam) + ' '; return; }
     if (t.id === 'btn-masuk') {
-      var pid = +$('#sel-proyek').value; store('last_proyek', String(pid)); busy(t, true);
-      rpc('tukang_absen', auth({ p_tanggal: tanggalPilihan(), p_proyek: pid })).then(muat).then(function () { toast('Masuk tercatat ✓'); render(); }).catch(function (er) { busy(t, false); onErr(er); });
+      if (!S.pid) { toast('Pilih proyek dari daftar', true); $('#in-proyek').focus(); return; }
+      store('last_proyek', String(S.pid)); busy(t, true);
+      rpc('tukang_absen', auth({ p_tanggal: tanggalPilihan(), p_proyek: S.pid })).then(muat).then(function () { toast('Masuk tercatat ✓'); render(); }).catch(function (er) { busy(t, false); onErr(er); });
     }
     if (t.id === 'btn-lembur') {
       busy(t, true);
-      rpc('tukang_lembur', auth({ p_tanggal: tanggalPilihan(), p_proyek: +$('#sel-lembur').value, p_jam: S.jam })).then(muat).then(function () { toast('Lembur tersimpan ✓'); render(); cekLemburAda(); }).catch(function (er) { busy(t, false); onErr(er); });
+      rpc('tukang_lembur', auth({ p_tanggal: tanggalPilihan(), p_proyek: S.lpid, p_jam: S.jam })).then(muat).then(function () { toast('Lembur tersimpan ✓'); render(); }).catch(function (er) { busy(t, false); onErr(er); });
     }
     if (t.dataset.batal) {
       var p = t.dataset.batal.split(':'); if (!confirm('Batalkan catatan ini?')) return; busy(t, true);
@@ -148,7 +166,19 @@
     }
     if (t.id === 'btn-keluar') keluar();
   });
-  document.addEventListener('change', function (e) { if (e.target.id === 'sel-lembur') cekLemburAda(); });
+  document.addEventListener('change', function (e) {
+    if (e.target.id !== 'in-tgl') return;
+    var v = e.target.value;
+    if (!v || v < minTgl() || v > today()) { toast('Pilih tanggal dari 7 hari terakhir sampai hari ini', true); e.target.value = tanggalPilihan(); return; }
+    S.tgl = v; render();
+  });
+  document.addEventListener('input', function (e) {
+    if (e.target.id !== 'in-proyek') return;
+    if (S.pid && namaProyek(S.pid) !== e.target.value) S.pid = null;
+    renderPick(true);
+  });
+  document.addEventListener('focusin', function (e) { if (e.target.id === 'in-proyek') { e.target.select(); renderPick(true); } });
+  document.addEventListener('click', function (e) { if (!e.target.closest('#pick') && e.target.id !== 'in-proyek') renderPick(false); });
 
   $('#f-login').addEventListener('submit', function (e) {
     e.preventDefault();
@@ -157,7 +187,7 @@
     if (!nama) { err.textContent = 'Nama harus diisi'; err.classList.remove('hidden'); return; }
     busy(btn, true);
     rpc('tukang_login', { p_nama: nama, p_perangkat: perangkat() }).then(function (u) {
-      S.user = u; store('tukang', JSON.stringify(u)); busy(btn, false, 'Masuk'); S.tab = 'masuk'; S.tgl = 0; masukApp();
+      S.user = u; store('tukang', JSON.stringify(u)); busy(btn, false, 'Masuk'); S.tab = 'masuk'; S.tgl = null; masukApp();
     }).catch(function (er) { busy(btn, false, 'Masuk'); err.textContent = er.message; err.classList.remove('hidden'); });
   });
 

@@ -65,15 +65,13 @@
   function pTukang() {
     var rows = S.tukang.map(function (t) {
       return '<tr><td><b>' + esc(t.nama) + '</b></td><td>' + esc(t.jabatan) + '</td><td class="n">' + rp(t.gaji_harian) + '</td><td class="n">' + rp(t.tarif_lembur) + '</td>' +
-        '<td>' + (t.perangkat_id ? '<span class="pill">HP terkunci</span>' : '<span class="pill warn">belum masuk</span>') + '</td>' +
         '<td class="acts"><button class="btn btn-sm" data-a="edit-tukang" data-id="' + t.id + '">Edit</button>' +
-        (t.perangkat_id ? '<button class="btn btn-sm" data-a="reset-hp" data-id="' + t.id + '">Reset HP</button>' : '') +
         '<button class="btn btn-danger btn-sm" data-a="hapus-tukang" data-id="' + t.id + '">Hapus</button></td></tr>';
     }).join('');
-    $('#page').innerHTML = '<div class="bar"><div class="grow"><h2>Data Tukang</h2><p class="muted small">Nama harus unik. Tukang masuk dengan mengetik nama ini. “Reset HP” dipakai jika tukang berganti HP.</p></div>' +
+    $('#page').innerHTML = '<div class="bar"><div class="grow"><h2>Data Tukang</h2><p class="muted small">Nama harus unik. Tukang masuk dengan mengetik nama ini, dari HP atau perangkat mana saja.</p></div>' +
       '<button class="btn btn-primary" data-a="tambah-tukang">+ Tambah Tukang</button></div>' +
-      '<div class="tbl-wrap"><table><thead><tr><th>Nama</th><th>Jabatan</th><th class="n">Gaji harian</th><th class="n">Lembur / jam</th><th>Perangkat</th><th></th></tr></thead><tbody>' +
-      (rows || '<tr><td colspan="6" class="center muted" style="padding:28px">Belum ada tukang</td></tr>') + '</tbody></table></div>';
+      '<div class="tbl-wrap"><table><thead><tr><th>Nama</th><th>Jabatan</th><th class="n">Gaji harian</th><th class="n">Lembur / jam</th><th></th></tr></thead><tbody>' +
+      (rows || '<tr><td colspan="5" class="center muted" style="padding:28px">Belum ada tukang</td></tr>') + '</tbody></table></div>';
   }
   function formTukang(t) {
     t = t || {};
@@ -194,8 +192,9 @@
     Promise.all([
       sb.from('periode_gaji').select('*').eq('tanggal_mulai', m).maybeSingle(),
       sb.from('absensi').select('tukang_id,tanggal,proyek(nama)').gte('tanggal', m).lte('tanggal', a).order('tanggal'),
+      sb.from('lembur').select('tukang_id,tanggal,jam,proyek(nama)').gte('tanggal', m).lte('tanggal', a).order('tanggal'),
     ]).then(function (r) {
-      var per = ok(r[0]), abs = ok(r[1]);
+      var per = ok(r[0]), abs = ok(r[1]), lem = ok(r[2]);
       var head = '<div class="bar"><div class="grow"><h2>Slip Gaji</h2><p class="muted small">Periode Jumat–Kamis, dibayar Jumat berikutnya.</p></div></div>' +
         '<div class="bar"><button class="btn" data-a="per-prev">‹ Sebelumnya</button>' +
         '<label class="field"><span>Periode (pilih tanggal di dalamnya)</span><input type="date" id="g-tgl" value="' + m + '"></label>' +
@@ -207,7 +206,7 @@
         (per && per.status === 'final' ? '<button class="btn" data-a="buka" data-id="' + per.id + '">Buka kembali</button>' : '') + '</div>';
       if (!per) { $('#page').innerHTML = head + act + '<p class="muted">Tekan “Hitung slip” untuk membuat slip dari data absensi dan lembur periode ini.</p>'; return; }
       return sb.from('slip_gaji').select('*').eq('periode_id', per.id).order('nama_tukang').then(function (r2) {
-        var slips = ok(r2); S.slipCache = { per: per, slips: slips, abs: abs };
+        var slips = ok(r2); S.slipCache = { per: per, slips: slips, abs: abs, lem: lem };
         var total = slips.reduce(function (a, s) { return a + +s.total_dibayar; }, 0);
         var rows = slips.map(function (s) {
           return '<tr><td><b>' + esc(s.nama_tukang) + '</b><br><span class="muted small">' + esc(s.jabatan) + '</span></td><td class="n">' + s.jumlah_hari + '</td><td class="n">' + jam(s.jam_lembur) + '</td>' +
@@ -235,9 +234,12 @@
     setTimeout(function () { window.print(); }, 150);
   }
   function slipHtml(s, c) {
-    var per = c.per, hari = c.abs.filter(function (a) { return a.tukang_id === s.tukang_id; }), by = {};
-    hari.forEach(function (a) { (by[a.tanggal] = by[a.tanggal] || []).push(a.proyek && a.proyek.nama); });
-    var rinci = Object.keys(by).sort().map(function (t) { return fmtS(t) + ' (' + esc(by[t].join(', ')) + ')'; }).join('; ');
+    var per = c.per, by = {};
+    c.abs.filter(function (a) { return a.tukang_id === s.tukang_id; }).forEach(function (a) { var d = by[a.tanggal] = by[a.tanggal] || { p: {}, l: 0 }; d.p[(a.proyek && a.proyek.nama) || '-'] = 1; });
+    c.lem.filter(function (l) { return l.tukang_id === s.tukang_id; }).forEach(function (l) { var d = by[l.tanggal] = by[l.tanggal] || { p: {}, l: 0 }; d.l += +l.jam; if (l.proyek) d.p[l.proyek.nama] = d.p[l.proyek.nama] || 1; });
+    var rinci = Object.keys(by).sort().map(function (t, i) {
+      return '<tr><td>' + (i + 1) + '</td><td>' + fmt(t) + '</td><td>' + esc(Object.keys(by[t].p).join(', ')) + '</td><td class="n">' + (by[t].l ? jam(by[t].l) + ' jam' : '-') + '</td></tr>';
+    }).join('');
     return '<div class="slip">' + kop('SLIP GAJI', 'Periode ' + fmtL(per.tanggal_mulai) + ' – ' + fmtL(per.tanggal_selesai)) +
       '<div class="meta"><div>Nama: <b>' + esc(s.nama_tukang) + '</b></div><div>Tanggal bayar: <b>' + fmtL(per.tanggal_bayar) + '</b></div><div>Jabatan: ' + esc(s.jabatan || '-') + '</div><div>Jumlah hari kerja: ' + s.jumlah_hari + ' hari</div></div>' +
       '<table style="width:100%"><thead><tr><th>Keterangan</th><th class="n">Jumlah</th><th class="n">Tarif</th><th class="n">Nilai</th></tr></thead><tbody>' +
@@ -246,7 +248,7 @@
       (+s.bonus ? '<tr><td colspan="3">Bonus' + (s.catatan ? ' (' + esc(s.catatan) + ')' : '') + '</td><td class="n">' + rp(s.bonus) + '</td></tr>' : '') +
       (+s.potongan ? '<tr><td colspan="3">Potongan' + (s.catatan && !+s.bonus ? ' (' + esc(s.catatan) + ')' : '') + '</td><td class="n">- ' + rp(s.potongan) + '</td></tr>' : '') +
       '<tr class="total"><td colspan="3">TOTAL DITERIMA</td><td class="n">' + rp(s.total_dibayar) + '</td></tr></tbody></table>' +
-      (rinci ? '<p style="margin-top:8px;font-size:10px">Tanggal masuk: ' + rinci + '</p>' : '') +
+      (rinci ? '<p style="margin:10px 0 4px"><b>Rincian kehadiran</b></p><table style="width:100%"><thead><tr><th style="width:28px">No</th><th>Tanggal</th><th>Proyek</th><th class="n">Lembur</th></tr></thead><tbody>' + rinci + '</tbody></table>' : '') +
       '<div class="ttd"><div>Penerima<br><br><br><br>( ' + esc(s.nama_tukang) + ' )</div><div>Admin<br><br><br><br>( ................ )</div></div></div>';
   }
 
