@@ -151,23 +151,25 @@
   function pAbsensi() {
     if (!S.f) S.f = defaultFilter();
     $('#page').innerHTML = '<div class="bar"><div class="grow"><h2>Absensi</h2></div><button class="btn btn-primary" data-a="tambah-absensi">+ Tambah Absensi</button></div>' + barFilter(true) + '<div id="hasil"></div>';
-    query('absensi', 'id,tanggal,tukang_id,proyek_id,tukang(nama),proyek(nama)').then(function (r) {
+    query('absensi', 'id,tanggal,kegiatan,tukang_id,proyek_id,tukang(nama),proyek(nama)').then(function (r) {
       var d = ok(r), hari = {}; d.forEach(function (x) { hari[x.tukang_id + '|' + x.tanggal] = 1; });
       $('#hasil').innerHTML = '<div class="sum"><div class="card"><b>' + d.length + '</b><span>catatan masuk</span></div><div class="card"><b>' + Object.keys(hari).length + '</b><span>hari kerja (gaji)</span></div></div>' +
-        '<div class="tbl-wrap"><table><thead><tr><th>Tanggal</th><th>Tukang</th><th>Proyek</th><th></th></tr></thead><tbody>' +
-        (d.map(function (x) { return '<tr><td>' + fmt(x.tanggal) + '</td><td>' + esc(x.tukang && x.tukang.nama) + '</td><td>' + esc(x.proyek && x.proyek.nama) + '</td><td class="acts"><button class="btn btn-danger btn-sm" data-a="hapus-absensi" data-id="' + x.id + '">Hapus</button></td></tr>'; }).join('') || '<tr><td colspan="4" class="center muted" style="padding:28px">Tidak ada data</td></tr>') + '</tbody></table></div>';
+        '<div class="tbl-wrap"><table><thead><tr><th>Tanggal</th><th>Tukang</th><th>Proyek</th><th>Kegiatan</th><th></th></tr></thead><tbody>' +
+        (d.map(function (x) { return '<tr><td>' + fmt(x.tanggal) + '</td><td>' + esc(x.tukang && x.tukang.nama) + '</td><td>' + esc(x.proyek && x.proyek.nama) + '</td><td style="white-space:normal;min-width:200px">' + esc(x.kegiatan) + '</td><td class="acts"><button class="btn btn-danger btn-sm" data-a="hapus-absensi" data-id="' + x.id + '">Hapus</button></td></tr>'; }).join('') || '<tr><td colspan="5" class="center muted" style="padding:28px">Tidak ada data</td></tr>') + '</tbody></table></div>';
     }).catch(fail);
   }
   function formTambah(tabel) {
     return '<label class="field"><span>Tukang</span><select name="tukang" required>' + selOpts(S.tukang, '', '— pilih —') + '</select></label>' +
       '<label class="field"><span>Tanggal</span><input type="date" name="tanggal" value="' + todayStr() + '" required></label>' +
       '<label class="field"><span>Proyek</span><select name="proyek" required>' + selOpts(S.proyek.filter(function (p) { return p.aktif; }), '', '— pilih —') + '</select></label>' +
-      (tabel === 'lembur' ? '<label class="field"><span>Jam lembur</span><input name="jam" type="number" min="0.5" max="12" step="0.5" required></label>' : '');
+      (tabel === 'lembur' ? '<label class="field"><span>Jam lembur</span><input name="jam" type="number" min="0.5" max="12" step="0.5" required></label>' : '') +
+      '<label class="field"><span>Kegiatan</span><textarea name="kegiatan" rows="2" maxlength="200" required></textarea></label>';
   }
   function simpanBaru(tabel) {
     return function (fd) {
       var v = { tukang_id: +fd.get('tukang'), tanggal: fd.get('tanggal'), proyek_id: +fd.get('proyek') };
       if (!v.tukang_id || !v.tanggal || !v.proyek_id) throw new Error('Lengkapi semua isian');
+      v.kegiatan = String(fd.get('kegiatan')).trim(); if (v.kegiatan.length < 3) throw new Error('Kegiatan harus diisi');
       if (tabel === 'lembur') v.jam = +fd.get('jam');
       var q = tabel === 'lembur' ? sb.from('lembur').upsert(v, { onConflict: 'tukang_id,tanggal,proyek_id' }) : sb.from('absensi').insert(v);
       return q.then(function (r) { if (r.error) throw new Error(r.error.code === '23505' ? 'Data sudah ada' : r.error.message); toast('Tersimpan'); go(tabel); });
@@ -178,11 +180,11 @@
   function pLembur() {
     if (!S.f) S.f = defaultFilter();
     $('#page').innerHTML = '<div class="bar"><div class="grow"><h2>Lembur</h2></div><button class="btn btn-primary" data-a="tambah-lembur">+ Tambah Lembur</button></div>' + barFilter(true) + '<div id="hasil"></div>';
-    query('lembur', 'id,tanggal,jam,tukang_id,proyek_id,tukang(nama),proyek(nama)').then(function (r) {
+    query('lembur', 'id,tanggal,jam,kegiatan,tukang_id,proyek_id,tukang(nama),proyek(nama)').then(function (r) {
       var d = ok(r), tot = d.reduce(function (a, x) { return a + +x.jam; }, 0);
       $('#hasil').innerHTML = '<div class="sum"><div class="card"><b>' + jam(tot) + ' jam</b><span>total lembur</span></div></div>' +
-        '<div class="tbl-wrap"><table><thead><tr><th>Tanggal</th><th>Tukang</th><th>Proyek</th><th class="n">Jam</th><th></th></tr></thead><tbody>' +
-        (d.map(function (x) { return '<tr><td>' + fmt(x.tanggal) + '</td><td>' + esc(x.tukang && x.tukang.nama) + '</td><td>' + esc(x.proyek && x.proyek.nama) + '</td><td class="n">' + jam(x.jam) + '</td><td class="acts"><button class="btn btn-sm" data-a="edit-lembur" data-id="' + x.id + '" data-jam="' + x.jam + '">Ubah jam</button><button class="btn btn-danger btn-sm" data-a="hapus-lembur" data-id="' + x.id + '">Hapus</button></td></tr>'; }).join('') || '<tr><td colspan="5" class="center muted" style="padding:28px">Tidak ada data</td></tr>') + '</tbody></table></div>';
+        '<div class="tbl-wrap"><table><thead><tr><th>Tanggal</th><th>Tukang</th><th>Proyek</th><th>Kegiatan</th><th class="n">Jam</th><th></th></tr></thead><tbody>' +
+        (d.map(function (x) { return '<tr><td>' + fmt(x.tanggal) + '</td><td>' + esc(x.tukang && x.tukang.nama) + '</td><td>' + esc(x.proyek && x.proyek.nama) + '</td><td style="white-space:normal;min-width:200px">' + esc(x.kegiatan) + '</td><td class="n">' + jam(x.jam) + '</td><td class="acts"><button class="btn btn-sm" data-a="edit-lembur" data-id="' + x.id + '" data-jam="' + x.jam + '" data-keg="' + esc(x.kegiatan) + '">Ubah</button><button class="btn btn-danger btn-sm" data-a="hapus-lembur" data-id="' + x.id + '">Hapus</button></td></tr>'; }).join('') || '<tr><td colspan="6" class="center muted" style="padding:28px">Tidak ada data</td></tr>') + '</tbody></table></div>';
     }).catch(fail);
   }
 
@@ -192,8 +194,8 @@
     var m = S.gajiMulai, a = addDays(m, 6);
     Promise.all([
       sb.from('periode_gaji').select('*').eq('tanggal_mulai', m).maybeSingle(),
-      sb.from('absensi').select('tukang_id,tanggal,proyek(nama)').gte('tanggal', m).lte('tanggal', a).order('tanggal'),
-      sb.from('lembur').select('tukang_id,tanggal,jam,proyek(nama)').gte('tanggal', m).lte('tanggal', a).order('tanggal'),
+      sb.from('absensi').select('tukang_id,tanggal,kegiatan,proyek(nama)').gte('tanggal', m).lte('tanggal', a).order('tanggal'),
+      sb.from('lembur').select('tukang_id,tanggal,jam,kegiatan,proyek(nama)').gte('tanggal', m).lte('tanggal', a).order('tanggal'),
     ]).then(function (r) {
       var per = ok(r[0]), abs = ok(r[1]), lem = ok(r[2]);
       var head = '<div class="bar"><div class="grow"><h2>Slip Gaji</h2><p class="muted small">Periode Jumat–Kamis, dibayar Jumat berikutnya.</p></div></div>' +
@@ -236,10 +238,12 @@
   }
   function slipHtml(s, c) {
     var per = c.per, by = {};
-    c.abs.filter(function (a) { return a.tukang_id === s.tukang_id; }).forEach(function (a) { var d = by[a.tanggal] = by[a.tanggal] || { p: {}, l: 0 }; d.p[(a.proyek && a.proyek.nama) || '-'] = 1; });
-    c.lem.filter(function (l) { return l.tukang_id === s.tukang_id; }).forEach(function (l) { var d = by[l.tanggal] = by[l.tanggal] || { p: {}, l: 0 }; d.l += +l.jam; if (l.proyek) d.p[l.proyek.nama] = d.p[l.proyek.nama] || 1; });
-    var rinci = Object.keys(by).sort().map(function (t, i) {
-      return '<tr><td>' + (i + 1) + '</td><td>' + fmt(t) + '</td><td>' + esc(Object.keys(by[t].p).join(', ')) + '</td><td class="n">' + (by[t].l ? jam(by[t].l) + ' jam' : '-') + '</td></tr>';
+    function itm(t, pn) { var k = t + '|' + pn; return by[k] = by[k] || { t: t, p: pn, k: '', l: 0, kl: '' }; }
+    c.abs.filter(function (a) { return a.tukang_id === s.tukang_id; }).forEach(function (a) { itm(a.tanggal, (a.proyek && a.proyek.nama) || '-').k = a.kegiatan || ''; });
+    c.lem.filter(function (l) { return l.tukang_id === s.tukang_id; }).forEach(function (l) { var x = itm(l.tanggal, (l.proyek && l.proyek.nama) || '-'); x.l += +l.jam; x.kl = l.kegiatan || ''; });
+    var rinci = Object.keys(by).sort().map(function (k, i) {
+      var x = by[k];
+      return '<tr><td>' + (i + 1) + '</td><td>' + fmt(x.t) + '</td><td>' + esc(x.p) + '</td><td>' + esc(x.k) + (x.kl ? '<br><i>Lembur: ' + esc(x.kl) + '</i>' : '') + '</td><td class="n">' + (x.l ? jam(x.l) + ' jam' : '-') + '</td></tr>';
     }).join('');
     return '<div class="slip">' + kop('SLIP GAJI', 'Periode ' + fmtL(per.tanggal_mulai) + ' – ' + fmtL(per.tanggal_selesai), true) +
       '<div class="meta"><div>Nama: <b>' + esc(s.nama_tukang) + '</b></div><div>Tanggal bayar: <b>' + fmtL(per.tanggal_bayar) + '</b></div><div>Jabatan: ' + esc(s.jabatan || '-') + '</div><div>Jumlah hari kerja: ' + s.jumlah_hari + ' hari</div></div>' +
@@ -249,7 +253,7 @@
       (+s.bonus ? '<tr><td colspan="3">Bonus' + (s.catatan ? ' (' + esc(s.catatan) + ')' : '') + '</td><td class="n">' + rp(s.bonus) + '</td></tr>' : '') +
       (+s.potongan ? '<tr><td colspan="3">Potongan' + (s.catatan && !+s.bonus ? ' (' + esc(s.catatan) + ')' : '') + '</td><td class="n">- ' + rp(s.potongan) + '</td></tr>' : '') +
       '<tr class="total"><td colspan="3">TOTAL DITERIMA</td><td class="n">' + rp(s.total_dibayar) + '</td></tr></tbody></table>' +
-      (rinci ? '<p class="sub">Rincian kehadiran</p><table><thead><tr><th style="width:28px">No</th><th>Tanggal</th><th>Proyek</th><th class="n">Lembur</th></tr></thead><tbody>' + rinci + '</tbody></table>' : '') +
+      (rinci ? '<p class="sub">Rincian kehadiran</p><table><thead><tr><th style="width:28px">No</th><th>Tanggal</th><th>Proyek</th><th>Kegiatan</th><th class="n">Lembur</th></tr></thead><tbody>' + rinci + '</tbody></table>' : '') +
       '<div class="ttd"><div>Penerima<br><br><br><br>( ' + esc(s.nama_tukang) + ' )</div><div>Admin<br><br><br><br>( ................ )</div></div></div>';
   }
 
@@ -311,8 +315,8 @@
       case 'tambah-lembur': dialog({ title: 'Tambah / ganti lembur', body: formTambah('lembur'), submit: simpanBaru('lembur') }); break;
       case 'hapus-absensi': if (confirm('Hapus catatan masuk ini?')) sb.from('absensi').delete().eq('id', id).then(function (r) { if (r.error) throw r.error; toast('Dihapus'); go('absensi'); }).catch(fail); break;
       case 'hapus-lembur': if (confirm('Hapus data lembur ini?')) sb.from('lembur').delete().eq('id', id).then(function (r) { if (r.error) throw r.error; toast('Dihapus'); go('lembur'); }).catch(fail); break;
-      case 'edit-lembur': dialog({ title: 'Ubah jam lembur', body: '<label class="field"><span>Jam lembur</span><input name="jam" type="number" min="0.5" max="12" step="0.5" value="' + b.dataset.jam + '" required></label>',
-        submit: function (fd) { return sb.from('lembur').update({ jam: +fd.get('jam') }).eq('id', id).then(function (r) { if (r.error) throw r.error; toast('Tersimpan'); go('lembur'); }); } }); break;
+      case 'edit-lembur': dialog({ title: 'Ubah lembur', body: '<label class="field"><span>Jam lembur</span><input name="jam" type="number" min="0.5" max="12" step="0.5" value="' + b.dataset.jam + '" required></label><label class="field"><span>Kegiatan</span><textarea name="kegiatan" rows="2" maxlength="200">' + esc(b.dataset.keg || '') + '</textarea></label>',
+        submit: function (fd) { return sb.from('lembur').update({ jam: +fd.get('jam'), kegiatan: String(fd.get('kegiatan')).trim() }).eq('id', id).then(function (r) { if (r.error) throw r.error; toast('Tersimpan'); go('lembur'); }); } }); break;
       case 'per-prev': S.gajiMulai = addDays(S.gajiMulai, -7); go('gaji'); break;
       case 'per-next': S.gajiMulai = addDays(S.gajiMulai, 7); go('gaji'); break;
       case 'hitung': b.disabled = true; sb.rpc('admin_buat_slip', { p_mulai: S.gajiMulai }).then(function (r) { ok(r); toast('Slip dihitung'); go('gaji'); }).catch(function (x) { b.disabled = false; fail(x); }); break;
