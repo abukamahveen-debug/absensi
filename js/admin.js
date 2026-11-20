@@ -53,10 +53,11 @@
 
   /* ---------- navigasi ---------- */
   function nav() {
-    $('#nav').innerHTML = TABS.map(function (t) { return '<button type="button" data-tab="' + t[0] + '" class="' + (S.tab === t[0] ? 'on' : '') + '">' + t[1] + '</button>'; }).join('');
+    $('#nav').innerHTML = TABS.map(function (t) { return '<button type="button" data-tab="' + t[0] + '" class="' + (S.tab === t[0] ? 'on' : '') + '">' + t[1] + '</button>'; }).join('') +
+      '<button type="button" data-tab="' + S.tab + '" style="margin-left:auto">↻ Muat ulang</button>';
   }
-  function go(tab) {
-    S.tab = tab; nav(); loading();
+  function go(tab, silent) {
+    S.tab = tab; nav(); if (!silent) loading();
     var fn = { tukang: pTukang, proyek: pProyek, absensi: pAbsensi, lembur: pLembur, gaji: pGaji, laporan: pLaporan }[tab];
     muatDasar().then(fn).catch(fail);
   }
@@ -345,6 +346,14 @@
     t.addEventListener('input', function () { manual = true; });
     g.addEventListener('input', function () { if (!manual) t.value = g.value ? Math.round(+g.value / 8 / 500) * 500 : ''; });
   }
+
+  /* muat ulang otomatis tiap 30 detik (hanya halaman data, dan saat tidak sedang mengetik) */
+  setInterval(function () {
+    var el = document.activeElement, mengetik = el && /^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName);
+    if (document.visibilityState !== 'visible' || !sb || $('#v-app').classList.contains('hidden')) return;
+    if (!$('#dialog').classList.contains('hidden') || mengetik) return;
+    if (['absensi', 'lembur', 'laporan', 'gaji'].indexOf(S.tab) >= 0) go(S.tab, true);
+  }, 30000);
 
   /* ================= login ================= */
   function show(v) { $('#v-login').classList.toggle('hidden', v !== 'login'); $('#v-app').classList.toggle('hidden', v !== 'app'); }
