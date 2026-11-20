@@ -223,8 +223,8 @@
   }
 
   /* ---------- cetak ---------- */
-  function kop(judul, sub) {
-    return '<div class="kop"><img src="assets/logo.png" alt=""><div><h2>' + esc(S.usaha.nama_usaha) + '</h2>' + (S.usaha.alamat_usaha ? '<div>' + esc(S.usaha.alamat_usaha) + '</div>' : '') + '</div><div style="flex:1;text-align:right"><h1>' + judul + '</h1><div>' + sub + '</div></div></div>';
+  function kop(judul, sub, logoSaja) {
+    return '<div class="kop"><img src="assets/logo.png" alt="">' + (logoSaja ? '' : '<div><h2>' + esc(S.usaha.nama_usaha) + '</h2>' + (S.usaha.alamat_usaha ? '<div>' + esc(S.usaha.alamat_usaha) + '</div>' : '') + '</div>') + '<div style="flex:1;text-align:right"><h1>' + judul + '</h1><div>' + sub + '</div></div></div>';
   }
   function cetak(html, landscape) {
     $('#print').innerHTML = html;
@@ -241,7 +241,7 @@
     var rinci = Object.keys(by).sort().map(function (t, i) {
       return '<tr><td>' + (i + 1) + '</td><td>' + fmt(t) + '</td><td>' + esc(Object.keys(by[t].p).join(', ')) + '</td><td class="n">' + (by[t].l ? jam(by[t].l) + ' jam' : '-') + '</td></tr>';
     }).join('');
-    return '<div class="slip">' + kop('SLIP GAJI', 'Periode ' + fmtL(per.tanggal_mulai) + ' – ' + fmtL(per.tanggal_selesai)) +
+    return '<div class="slip">' + kop('SLIP GAJI', 'Periode ' + fmtL(per.tanggal_mulai) + ' – ' + fmtL(per.tanggal_selesai), true) +
       '<div class="meta"><div>Nama: <b>' + esc(s.nama_tukang) + '</b></div><div>Tanggal bayar: <b>' + fmtL(per.tanggal_bayar) + '</b></div><div>Jabatan: ' + esc(s.jabatan || '-') + '</div><div>Jumlah hari kerja: ' + s.jumlah_hari + ' hari</div></div>' +
       '<table style="width:100%"><thead><tr><th>Keterangan</th><th class="n">Jumlah</th><th class="n">Tarif</th><th class="n">Nilai</th></tr></thead><tbody>' +
       '<tr><td>Gaji harian</td><td class="n">' + s.jumlah_hari + ' hari</td><td class="n">' + rp(s.gaji_harian) + '</td><td class="n">' + rp(s.upah_pokok) + '</td></tr>' +
