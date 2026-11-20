@@ -1,7 +1,7 @@
 (function () {
   'use strict';
   var C = window.CONFIG, $ = function (s, r) { return (r || document).querySelector(s); };
-  var S = { user: null, proyek: [], r: null, tab: 'masuk', tgl: null, jam: 2, pid: null, lpid: null };
+  var S = { user: null, proyek: [], r: null, tab: 'masuk', tgl: null, jam: 2, pid: null, lpid: null, kegM: '', kegL: '' };
 
   /* ---------- util ---------- */
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -49,7 +49,7 @@
 
   /* ---------- tampilan ---------- */
   function show(v) { $('#v-login').classList.toggle('hidden', v !== 'login'); $('#v-app').classList.toggle('hidden', v !== 'app'); }
-  function keluar() { store('tukang', null); S.user = null; S.r = null; S.tgl = null; S.pid = null; S.lpid = null; $('#in-nama').value = ''; show('login'); }
+  function keluar() { store('tukang', null); S.user = null; S.r = null; S.tgl = null; S.pid = null; S.lpid = null; S.kegM = ''; S.kegL = ''; $('#in-nama').value = ''; show('login'); }
 
   function muat() {
     return Promise.all([rpc('daftar_proyek'), rpc('tukang_riwayat', auth())]).then(function (r) { S.proyek = r[0] || []; S.r = r[1]; });
@@ -82,6 +82,7 @@
     if (!S.proyek.length) return h + '<p class="alert alert-bad">Belum ada proyek. Hubungi admin.</p>';
     return h + '<label class="field"><span>Proyek</span><input id="in-proyek" type="search" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Ketik untuk mencari proyek"></label>' +
       '<div id="pick" class="pick hidden"></div>' +
+      '<label class="field"><span>Kegiatan</span><textarea id="in-keg-m" rows="3" maxlength="200" placeholder="Isi sesuai pekerjaan hari ini, contoh: pasang besi kolom lantai 2">' + esc(S.kegM) + '</textarea></label>' +
       '<button id="btn-masuk" class="btn btn-primary btn-lg btn-block" type="button">Masuk</button>' +
       '<p class="muted small center" style="margin-top:12px">Berganti proyek di hari yang sama? Catat lagi dengan proyek lain.</p>';
   }
@@ -113,6 +114,7 @@
     return h + '<div class="field"><span>Proyek</span></div><div class="pick" style="margin-top:0">' + list.map(function (p) { return '<button type="button" data-lp="' + p.id + '" class="' + (S.lpid === p.id ? 'on' : '') + '">' + esc(p.nama) + (S.lpid === p.id ? '<span>✓</span>' : '') + '</button>'; }).join('') + '</div>' +
       '<div class="field"><span>Jumlah jam lembur</span></div>' +
       '<div class="stepper"><button type="button" id="jam-min" aria-label="Kurangi">−</button><output id="jam-out">' + fmtJam(S.jam) + ' <small>jam</small></output><button type="button" id="jam-plus" aria-label="Tambah">+</button></div>' +
+      '<label class="field"><span>Kegiatan lembur</span><textarea id="in-keg-l" rows="3" maxlength="200" placeholder="Isi sesuai pekerjaan saat lembur, contoh: lanjut pengecoran">' + esc(S.kegL) + '</textarea></label>' +
       '<p id="lembur-ada" class="muted small" style="margin-bottom:14px"></p>' +
       '<button id="btn-lembur" class="btn btn-primary btn-lg btn-block" type="button">Simpan Lembur</button>';
   }
@@ -127,12 +129,12 @@
     return h + ds.map(function (d) {
       var x = by[d];
       return '<section class="day"><h3>' + fmt(d) + '</h3>' +
-        x.m.map(function (a) { return row('Masuk', a.proyek, a.bisa_batal, 'absensi', a.id); }).join('') +
-        x.l.map(function (l) { return row('Lembur ' + fmtJam(l.jam) + ' jam', l.proyek, l.bisa_batal, 'lembur', l.id); }).join('') + '</section>';
+        x.m.map(function (a) { return row('Masuk', a.proyek, a.kegiatan, a.bisa_batal, 'absensi', a.id); }).join('') +
+        x.l.map(function (l) { return row('Lembur ' + fmtJam(l.jam) + ' jam', l.proyek, l.kegiatan, l.bisa_batal, 'lembur', l.id); }).join('') + '</section>';
     }).join('');
   }
-  function row(judul, proyek, bisa, jenis, id) {
-    return '<div class="row"><div class="t"><b>' + esc(judul) + '</b><span>' + esc(proyek) + '</span></div>' +
+  function row(judul, proyek, kegiatan, bisa, jenis, id) {
+    return '<div class="row"><div class="t"><b>' + esc(judul) + '</b><span>' + esc(proyek) + '</span>' + (kegiatan ? '<span style="display:block;color:var(--ink);margin-top:2px">' + esc(kegiatan) + '</span>' : '') + '</div>' +
       (bisa ? '<button class="btn btn-danger btn-sm" data-batal="' + jenis + ':' + id + '" type="button">Batal</button>' : '') + '</div>';
   }
 
@@ -153,12 +155,14 @@
     if (t.id === 'jam-plus') { S.jam = Math.min(12, S.jam + 0.5); $('#jam-out').firstChild.nodeValue = fmtJam(S.jam) + ' '; return; }
     if (t.id === 'btn-masuk') {
       if (!S.pid) { toast('Pilih proyek dari daftar', true); $('#in-proyek').focus(); return; }
+      if (S.kegM.trim().length < 3) { toast('Isi kegiatan terlebih dahulu', true); $('#in-keg-m').focus(); return; }
       store('last_proyek', String(S.pid)); busy(t, true);
-      rpc('tukang_absen', auth({ p_tanggal: tanggalPilihan(), p_proyek: S.pid })).then(muat).then(function () { toast('Masuk tercatat ✓'); render(); }).catch(function (er) { busy(t, false); onErr(er); });
+      rpc('tukang_absen', auth({ p_tanggal: tanggalPilihan(), p_proyek: S.pid, p_kegiatan: S.kegM.trim() })).then(muat).then(function () { S.kegM = ''; toast('Masuk tercatat ✓'); render(); }).catch(function (er) { busy(t, false); onErr(er); });
     }
     if (t.id === 'btn-lembur') {
+      if (S.kegL.trim().length < 3) { toast('Isi kegiatan lembur terlebih dahulu', true); $('#in-keg-l').focus(); return; }
       busy(t, true);
-      rpc('tukang_lembur', auth({ p_tanggal: tanggalPilihan(), p_proyek: S.lpid, p_jam: S.jam })).then(muat).then(function () { toast('Lembur tersimpan ✓'); render(); }).catch(function (er) { busy(t, false); onErr(er); });
+      rpc('tukang_lembur', auth({ p_tanggal: tanggalPilihan(), p_proyek: S.lpid, p_jam: S.jam, p_kegiatan: S.kegL.trim() })).then(muat).then(function () { S.kegL = ''; toast('Lembur tersimpan ✓'); render(); }).catch(function (er) { busy(t, false); onErr(er); });
     }
     if (t.dataset.batal) {
       var p = t.dataset.batal.split(':'); if (!confirm('Batalkan catatan ini?')) return; busy(t, true);
@@ -173,6 +177,8 @@
     S.tgl = v; render();
   });
   document.addEventListener('input', function (e) {
+    if (e.target.id === 'in-keg-m') { S.kegM = e.target.value; return; }
+    if (e.target.id === 'in-keg-l') { S.kegL = e.target.value; return; }
     if (e.target.id !== 'in-proyek') return;
     if (S.pid && namaProyek(S.pid) !== e.target.value) S.pid = null;
     renderPick(true);
