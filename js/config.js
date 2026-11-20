@@ -1,9 +1,5 @@
-/**
- * Konfigurasi aplikasi.
- * Tempel URL Web App Apps Script (yang berakhiran /exec) pada API_URL.
- */
-const CONFIG = {
-  API_URL: 'https://script.google.com/macros/s/AKfycby-uaAPCIfO5hrLTrVjdJT9gQGk9pzdnBHQZ2NrTqD6XoJ9xvXEiN90Ag0pwOpVNne_/exec',
-  TIMEZONE: 'Asia/Jakarta',
-  NAMA_PERUSAHAAN: 'PT. Ecolum Pandu Aluvia'
+// Isi dua nilai ini dari Supabase: Project Settings → API
+window.CONFIG = {
+  SUPABASE_URL: 'https://PASTE_PROJECT_ID.supabase.co',
+  SUPABASE_ANON_KEY: 'PASTE_ANON_PUBLIC_KEY'
 };
